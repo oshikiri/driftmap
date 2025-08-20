@@ -1,11 +1,11 @@
-import { drawCompass, degToCardinal } from './compass.js';
+import { drawCompass, degToCardinal } from "./compass.js";
 
 class CompassElement extends HTMLElement {
   #angle = 0;
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>
         #container {
@@ -30,20 +30,20 @@ class CompassElement extends HTMLElement {
         <div id="label">N</div>
       </div>
     `;
-    this.canvas = this.shadowRoot.getElementById('canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.label = this.shadowRoot.getElementById('label');
+    this.canvas = this.shadowRoot.getElementById("canvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.label = this.shadowRoot.getElementById("label");
     this.lastUpdate = 0;
   }
 
   connectedCallback() {
     this.setAngle(0);
-    this.label.textContent = 'N (0°)';
-    window.addEventListener('deviceorientation', this.handleOrientation);
+    this.label.textContent = "N (0°)";
+    window.addEventListener("deviceorientation", this.handleOrientation);
   }
 
   disconnectedCallback() {
-    window.removeEventListener('deviceorientation', this.handleOrientation);
+    window.removeEventListener("deviceorientation", this.handleOrientation);
   }
 
   handleOrientation = (e) => {
@@ -51,9 +51,11 @@ class CompassElement extends HTMLElement {
     if (now - this.lastUpdate < 50) return;
     this.lastUpdate = now;
     let heading = e.alpha;
-    if (typeof heading !== 'number') heading = 0;
+    if (typeof heading !== "number") heading = 0;
     this.setAngle(heading);
-    this.label.textContent = `${degToCardinal(heading)} (${Math.round(heading)}°)`;
+    this.label.textContent = `${degToCardinal(heading)} (${Math.round(
+      heading
+    )}°)`;
   };
 
   setAngle(angle) {
@@ -66,4 +68,4 @@ class CompassElement extends HTMLElement {
   }
 }
 
-customElements.define('driftmap-compass', CompassElement);
+customElements.define("driftmap-compass", CompassElement);
