@@ -20,7 +20,7 @@ export function drawCompass(ctx, angle) {
   // Draw needle
   ctx.save();
   ctx.translate(100, 100);
-  ctx.rotate(((angle - 90) * Math.PI) / 180); // 0deg = North
+  ctx.rotate((angle * Math.PI) / 180);
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(0, -70);
