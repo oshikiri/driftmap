@@ -3,36 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dead-wreckoning</title>
+    <title>DriftMap</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div id="compass-container">
-      <canvas id="compass-canvas" width="200" height="200"></canvas>
-      <div id="compass-label">N</div>
-    </div>
-    <script type="module">
-      import { drawCompass, degToCardinal } from "./compass.js";
-      const canvas = document.getElementById("compass-canvas");
-      const ctx = canvas.getContext("2d");
-      const label = document.getElementById("compass-label");
-
-      let lastUpdate = 0;
-      // Listen to device orientation
-      window.addEventListener("deviceorientation", function (e) {
-        const now = Date.now();
-        if (now - lastUpdate < 50) return; // 50ms throttle
-        lastUpdate = now;
-
-        let heading = e.alpha;
-        if (typeof heading !== "number") heading = 0;
-        drawCompass(ctx, heading);
-        label.textContent = `${degToCardinal(heading)} (${Math.round(heading)}°)`;
-      });
-
-      // Initial draw
-      drawCompass(ctx, 0);
-      label.textContent = "N (0°)";
-    </script>
+    <driftmap-compass></driftmap-compass>
+    <script type="module" src="./CompassElement.js"></script>
   </body>
 </html>
