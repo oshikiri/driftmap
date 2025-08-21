@@ -4,28 +4,18 @@ class DriftmapEditor extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>
-        .editor-container {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5em;
-          font-family: sans-serif;
-          padding: 1em;
-          border: 1px solid #ccc;
-          border-radius: 8px;
-          background: #fafafa;
-          max-width: 400px;
+        .canvas-wrapper {
+          height: 70vh;
         }
         canvas {
-          border: 1px solid #1976d2;
-          border-radius: 4px;
-          background: #fff;
+          background: #001427ff;
           cursor: crosshair;
         }
         .pin {
           position: absolute;
           width: 12px;
           height: 12px;
-          background: #e91e63;
+          background: #740027ff;
           border-radius: 50%;
           border: 2px solid #fff;
           box-shadow: 0 0 2px #333;
@@ -42,11 +32,6 @@ class DriftmapEditor extends HTMLElement {
           transform: translate(12px, -24px);
           pointer-events: none;
         }
-        .canvas-wrapper {
-          position: relative;
-          width: 360px;
-          height: 240px;
-        }
         button {
           align-self: flex-end;
           padding: 0.5em 1em;
@@ -57,19 +42,17 @@ class DriftmapEditor extends HTMLElement {
           color: #fff;
           cursor: pointer;
         }
-        button:active {
-          background: #1565c0;
-        }
       </style>
       <div class="editor-container">
         <div class="canvas-wrapper">
-          <canvas id="mapCanvas" width="360" height="240"></canvas>
+          <canvas id="mapCanvas"></canvas>
           <div id="pins"></div>
         </div>
-        <button id="clear">Clear</button>
       </div>
     `;
     this.canvas = this.shadowRoot.getElementById("mapCanvas");
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
     this.ctx = this.canvas.getContext("2d");
     this.pinsEl = this.shadowRoot.getElementById("pins");
     this.pins = [];
@@ -99,6 +82,8 @@ class DriftmapEditor extends HTMLElement {
     this.lastDist = null;
     this.offsetX = 0;
     this.offsetY = 0;
+
+    this.redrawAll();
   }
 
   addPin = (e) => {
@@ -294,6 +279,29 @@ class DriftmapEditor extends HTMLElement {
     this.redrawLines();
     // ピンはCSSで絶対配置なので、ズーム時は再配置が必要
     this.renderPins();
+    this.drawGrid();
+  }
+
+  drawGrid() {
+    const gridSize = 50;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    this.ctx.save();
+    this.ctx.strokeStyle = "#ccc";
+    this.ctx.lineWidth = 0.2;
+    for (let x = 0; x < width; x += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, height);
+      this.ctx.stroke();
+    }
+    for (let y = 0; y < height; y += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(width, y);
+      this.ctx.stroke();
+    }
+    this.ctx.restore();
   }
 }
 

@@ -15,7 +15,7 @@ class DriftmapPedometer extends HTMLElement {
         button {
           margin: 0.25em;
           padding: 0.5em 1em;
-          font-size: 1em;
+          font-size: 0.5em;
         }
         input[type="number"] {
           width: 4em;
@@ -24,7 +24,6 @@ class DriftmapPedometer extends HTMLElement {
       </style>
       <div class="container">
         <input id="stepInput" type="number" min="1" value="0" />
-        <button id="addStep">Add Steps</button>
         <button id="reset">Reset</button>
       </div>
     `;

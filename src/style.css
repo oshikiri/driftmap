@@ -2,5 +2,17 @@ body {
   font-family: sans-serif;
   background: #f8f8f8;
   margin: 0;
-  padding: 2em;
+}
+
+driftmap-compass {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
+driftmap-pedometer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
 }

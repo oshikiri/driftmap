@@ -8,11 +8,8 @@ class CompassElement extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>
-        #container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          margin-top: 2em;
+        :host {
+          position: relative;
         }
         #canvas {
           background: #fff;
@@ -20,9 +17,12 @@ class CompassElement extends HTMLElement {
           box-shadow: 0 2px 8px #aaa;
         }
         #label {
-          margin-top: 1em;
-          font-size: 1.5em;
+          position: absolute;
+          top: 0px;
+          left: 0px;
+          font-size: 1em;
           font-weight: bold;
+          background: white;
         }
       </style>
       <div id="container">
@@ -38,7 +38,7 @@ class CompassElement extends HTMLElement {
 
   connectedCallback() {
     this.setAngle(0);
-    this.label.textContent = "N (0°)";
+    this.label.textContent = "N (0/0)";
     window.addEventListener("deviceorientation", this.handleOrientation);
   }
 
@@ -54,8 +54,8 @@ class CompassElement extends HTMLElement {
     if (typeof heading !== "number") heading = 0;
     this.setAngle(heading);
     this.label.textContent = `${degToCardinal(heading)} (${Math.round(
-      heading
-    )}°)`;
+      360 - heading,
+    )}/${Math.round(heading)})`;
   };
 
   setAngle(angle) {
