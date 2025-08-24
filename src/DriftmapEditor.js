@@ -67,9 +67,6 @@ class DriftmapEditor extends HTMLElement {
     this.canvas.addEventListener("mousedown", this.startLineDraw);
     this.canvas.addEventListener("mousemove", this.drawLine);
     this.canvas.addEventListener("mouseup", this.endLineDraw);
-    this.shadowRoot
-      .getElementById("clear")
-      .addEventListener("click", () => this.clearAll());
     this.canvas.addEventListener("touchstart", this.onTouchStart, {
       passive: false,
     });
@@ -236,13 +233,6 @@ class DriftmapEditor extends HTMLElement {
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
     });
-  }
-
-  clearAll() {
-    this.pins = [];
-    this.lines = [];
-    this.pinsEl.innerHTML = "";
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   onTouchStart = (e) => {
