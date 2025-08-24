@@ -165,10 +165,10 @@ class DriftmapEditor extends HTMLElement {
       clearTimeout(longPressTimer);
     };
     pinEl.addEventListener("mousedown", startLongPress);
-    pinEl.addEventListener("touchstart", startLongPress);
+    pinEl.addEventListener("touchstart", startLongPress, { passive: true });
     pinEl.addEventListener("mouseup", cancelLongPress);
     pinEl.addEventListener("mouseleave", cancelLongPress);
-    pinEl.addEventListener("touchend", cancelLongPress);
+    pinEl.addEventListener("touchend", cancelLongPress, { passive: true });
     pinEl.addEventListener("click", () => {
       this.selectedPin = this.pins[idx];
       this.isDrawingLine = true;
