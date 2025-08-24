@@ -209,7 +209,17 @@ class DriftmapEditor extends HTMLElement {
       y: from.y - Math.cos(rad) * length,
     };
     this.lines.push({ from: { x: from.x, y: from.y }, to });
+
+    // Automatically add a pin at the end of the line
+    const newPin = {
+      x: to.x,
+      y: to.y,
+      memo: "" // Empty memo for automatically created pins
+    };
+    this.pins.push(newPin);
+
     this.redrawLines();
+    this.renderPins();
   }
 
   editPinName(idx) {
