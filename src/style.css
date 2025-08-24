@@ -6,12 +6,14 @@ body {
 
 driftmap-compass {
   position: absolute;
+  z-index: 1;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
 }
 
 driftmap-pedometer {
+  z-index: 1;
   position: absolute;
   left: 0;
   bottom: 0;

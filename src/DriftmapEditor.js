@@ -6,10 +6,25 @@ class DriftmapEditor extends HTMLElement {
       <style>
         .canvas-wrapper {
           height: 70vh;
+          position: relative;
         }
         canvas {
-          background: #001427ff;
+          position: absolute;
+          top: 0;
+          left: 0;
           cursor: crosshair;
+        }
+        #gridCanvas {
+          background: #001427ff;
+          z-index: 1;
+        }
+        #lineCanvas {
+          z-index: 2;
+          pointer-events: none;
+        }
+        #interactionCanvas {
+          z-index: 3;
+          background: transparent;
         }
         .pin {
           position: absolute;
@@ -21,6 +36,7 @@ class DriftmapEditor extends HTMLElement {
           box-shadow: 0 0 2px #333;
           transform: translate(-6px, -6px);
           cursor: pointer;
+          z-index: 4;
         }
         .memo {
           position: absolute;
@@ -31,6 +47,7 @@ class DriftmapEditor extends HTMLElement {
           font-size: 0.9em;
           transform: translate(12px, -24px);
           pointer-events: none;
+          z-index: 4;
         }
         button {
           align-self: flex-end;
@@ -45,15 +62,34 @@ class DriftmapEditor extends HTMLElement {
       </style>
       <div class="editor-container">
         <div class="canvas-wrapper">
-          <canvas id="mapCanvas"></canvas>
+          <canvas id="gridCanvas"></canvas>
+          <canvas id="lineCanvas"></canvas>
+          <canvas id="interactionCanvas"></canvas>
           <div id="pins"></div>
         </div>
       </div>
     `;
-    this.canvas = this.shadowRoot.getElementById("mapCanvas");
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.ctx = this.canvas.getContext("2d");
+
+    // Initialize canvases
+    this.gridCanvas = this.shadowRoot.getElementById("gridCanvas");
+    this.lineCanvas = this.shadowRoot.getElementById("lineCanvas");
+    this.interactionCanvas =
+      this.shadowRoot.getElementById("interactionCanvas");
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    [this.gridCanvas, this.lineCanvas, this.interactionCanvas].forEach(
+      (canvas) => {
+        canvas.width = width;
+        canvas.height = height;
+      },
+    );
+
+    this.gridCtx = this.gridCanvas.getContext("2d");
+    this.lineCtx = this.lineCanvas.getContext("2d");
+    this.interactionCtx = this.interactionCanvas.getContext("2d");
+
     this.pinsEl = this.shadowRoot.getElementById("pins");
     this.pins = [];
     this.lines = [];
@@ -62,18 +98,19 @@ class DriftmapEditor extends HTMLElement {
     this.lastX = 0;
     this.lastY = 0;
 
-    this.canvas.addEventListener("click", this.addPin);
+    // Event listeners on interaction canvas only
+    this.interactionCanvas.addEventListener("click", this.addPin);
     this.pinsEl.addEventListener("click", this.pinClick);
-    this.canvas.addEventListener("mousedown", this.startLineDraw);
-    this.canvas.addEventListener("mousemove", this.drawLine);
-    this.canvas.addEventListener("mouseup", this.endLineDraw);
-    this.canvas.addEventListener("touchstart", this.onTouchStart, {
+    this.interactionCanvas.addEventListener("mousedown", this.startLineDraw);
+    this.interactionCanvas.addEventListener("mousemove", this.drawLine);
+    this.interactionCanvas.addEventListener("mouseup", this.endLineDraw);
+    this.interactionCanvas.addEventListener("touchstart", this.onTouchStart, {
       passive: false,
     });
-    this.canvas.addEventListener("touchmove", this.onTouchMove, {
+    this.interactionCanvas.addEventListener("touchmove", this.onTouchMove, {
       passive: false,
     });
-    this.canvas.addEventListener("touchend", this.onTouchEnd);
+    this.interactionCanvas.addEventListener("touchend", this.onTouchEnd);
 
     this.scale = 1;
     this.lastDist = null;
@@ -84,7 +121,7 @@ class DriftmapEditor extends HTMLElement {
   }
 
   addPin = (e) => {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.interactionCanvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const memo = prompt("メモを入力してください");
@@ -112,19 +149,17 @@ class DriftmapEditor extends HTMLElement {
         this.pinsEl.appendChild(memoEl);
       }
     });
-    this.redrawLines();
   }
 
   pinClick = (e) => {
     if (!e.target.classList.contains("pin")) return;
     const idx = parseInt(e.target.dataset.idx, 10);
-    // 長押し判定用
     let longPressTimer;
     const pinEl = e.target;
     const startLongPress = () => {
       longPressTimer = setTimeout(() => {
         this.editPinName(idx);
-      }, 600); // 600ms以上で長押し
+      }, 600);
     };
     const cancelLongPress = () => {
       clearTimeout(longPressTimer);
@@ -134,7 +169,6 @@ class DriftmapEditor extends HTMLElement {
     pinEl.addEventListener("mouseup", cancelLongPress);
     pinEl.addEventListener("mouseleave", cancelLongPress);
     pinEl.addEventListener("touchend", cancelLongPress);
-    // 通常クリックで線描画モード
     pinEl.addEventListener("click", () => {
       this.selectedPin = this.pins[idx];
       this.isDrawingLine = true;
@@ -143,7 +177,6 @@ class DriftmapEditor extends HTMLElement {
   };
 
   showLineInput(idx) {
-    // 方向と長さ入力UIを表示
     const inputDiv = document.createElement("div");
     inputDiv.style.position = "absolute";
     inputDiv.style.left = `${this.pins[idx].x}px`;
@@ -175,13 +208,8 @@ class DriftmapEditor extends HTMLElement {
       x: from.x + Math.sin(rad) * length,
       y: from.y - Math.cos(rad) * length,
     };
-    this.ctx.beginPath();
-    this.ctx.moveTo(from.x, from.y);
-    this.ctx.lineTo(to.x, to.y);
-    this.ctx.strokeStyle = "#1976d2";
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
     this.lines.push({ from: { x: from.x, y: from.y }, to });
+    this.redrawLines();
   }
 
   editPinName(idx) {
@@ -195,7 +223,7 @@ class DriftmapEditor extends HTMLElement {
 
   startLineDraw = (e) => {
     if (!this.isDrawingLine || !this.selectedPin) return;
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.interactionCanvas.getBoundingClientRect();
     this.lastX = this.selectedPin.x;
     this.lastY = this.selectedPin.y;
     this.drawLine(e, true);
@@ -204,18 +232,13 @@ class DriftmapEditor extends HTMLElement {
   drawLine = (e, force) => {
     if (!this.isDrawingLine || !this.selectedPin) return;
     if (e.buttons !== 1 && !force) return;
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.interactionCanvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    this.ctx.beginPath();
-    this.ctx.moveTo(this.lastX, this.lastY);
-    this.ctx.lineTo(x, y);
-    this.ctx.strokeStyle = "#1976d2";
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
     this.lines.push({ from: { x: this.lastX, y: this.lastY }, to: { x, y } });
     this.lastX = x;
     this.lastY = y;
+    this.redrawLines();
   };
 
   endLineDraw = () => {
@@ -224,14 +247,15 @@ class DriftmapEditor extends HTMLElement {
   };
 
   redrawLines() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.lineCtx.clearRect(0, 0, this.lineCanvas.width, this.lineCanvas.height);
+    this.lineCtx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     this.lines.forEach((line) => {
-      this.ctx.beginPath();
-      this.ctx.moveTo(line.from.x, line.from.y);
-      this.ctx.lineTo(line.to.x, line.to.y);
-      this.ctx.strokeStyle = "#1976d2";
-      this.ctx.lineWidth = 2;
-      this.ctx.stroke();
+      this.lineCtx.beginPath();
+      this.lineCtx.moveTo(line.from.x, line.from.y);
+      this.lineCtx.lineTo(line.to.x, line.to.y);
+      this.lineCtx.strokeStyle = "#1976d2";
+      this.lineCtx.lineWidth = 2;
+      this.lineCtx.stroke();
     });
   }
 
@@ -264,34 +288,33 @@ class DriftmapEditor extends HTMLElement {
   };
 
   redrawAll() {
-    this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.redrawLines();
-    // ピンはCSSで絶対配置なので、ズーム時は再配置が必要
-    this.renderPins();
     this.drawGrid();
+    this.redrawLines();
+    this.renderPins();
   }
 
   drawGrid() {
+    this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
+    this.gridCtx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     const gridSize = 50;
-    const width = this.canvas.width;
-    const height = this.canvas.height;
-    this.ctx.save();
-    this.ctx.strokeStyle = "#ccc";
-    this.ctx.lineWidth = 0.2;
+    const width = this.gridCanvas.width;
+    const height = this.gridCanvas.height;
+    this.gridCtx.save();
+    this.gridCtx.strokeStyle = "#ccc";
+    this.gridCtx.lineWidth = 0.2;
     for (let x = 0; x < width; x += gridSize) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, height);
-      this.ctx.stroke();
+      this.gridCtx.beginPath();
+      this.gridCtx.moveTo(x, 0);
+      this.gridCtx.lineTo(x, height);
+      this.gridCtx.stroke();
     }
     for (let y = 0; y < height; y += gridSize) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(width, y);
-      this.ctx.stroke();
+      this.gridCtx.beginPath();
+      this.gridCtx.moveTo(0, y);
+      this.gridCtx.lineTo(width, y);
+      this.gridCtx.stroke();
     }
-    this.ctx.restore();
+    this.gridCtx.restore();
   }
 }
 
