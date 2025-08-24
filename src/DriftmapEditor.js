@@ -14,10 +14,6 @@ class DriftmapEditor extends HTMLElement {
           left: 0;
           cursor: crosshair;
         }
-        #gridCanvas {
-          background: #001427ff;
-          z-index: 1;
-        }
         #lineCanvas {
           z-index: 2;
           pointer-events: none;
@@ -62,7 +58,6 @@ class DriftmapEditor extends HTMLElement {
       </style>
       <div class="editor-container">
         <div class="canvas-wrapper">
-          <canvas id="gridCanvas"></canvas>
           <canvas id="lineCanvas"></canvas>
           <canvas id="interactionCanvas"></canvas>
           <div id="pins"></div>
@@ -71,7 +66,6 @@ class DriftmapEditor extends HTMLElement {
     `;
 
     // Initialize canvases
-    this.gridCanvas = this.shadowRoot.getElementById("gridCanvas");
     this.lineCanvas = this.shadowRoot.getElementById("lineCanvas");
     this.interactionCanvas =
       this.shadowRoot.getElementById("interactionCanvas");
@@ -79,14 +73,11 @@ class DriftmapEditor extends HTMLElement {
     const width = window.innerWidth;
     const height = window.innerHeight - 200;
 
-    [this.gridCanvas, this.lineCanvas, this.interactionCanvas].forEach(
-      (canvas) => {
-        canvas.width = width;
-        canvas.height = height;
-      },
-    );
+    [this.lineCanvas, this.interactionCanvas].forEach((canvas) => {
+      canvas.width = width;
+      canvas.height = height;
+    });
 
-    this.gridCtx = this.gridCanvas.getContext("2d");
     this.lineCtx = this.lineCanvas.getContext("2d");
     this.interactionCtx = this.interactionCanvas.getContext("2d");
 
@@ -156,7 +147,6 @@ class DriftmapEditor extends HTMLElement {
         this.pinsEl.appendChild(memoEl);
       }
     });
-    this.fitToAllPins();
   }
 
   pinClick = (e) => {
@@ -226,8 +216,8 @@ class DriftmapEditor extends HTMLElement {
     };
     this.pins.push(newPin);
 
-    this.redrawLines();
-    this.renderPins();
+    this.redrawAll();
+    this.fitToAllPins();
   }
 
   editPinName(idx) {
@@ -313,40 +303,8 @@ class DriftmapEditor extends HTMLElement {
   };
 
   redrawAll() {
-    this.drawGrid();
     this.redrawLines();
     this.renderPins();
-  }
-
-  drawGrid() {
-    this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
-    this.gridCtx.setTransform(
-      this.scale,
-      0,
-      0,
-      this.scale,
-      this.offsetX,
-      this.offsetY,
-    );
-    const gridSize = 50;
-    const width = this.gridCanvas.width;
-    const height = this.gridCanvas.height;
-    this.gridCtx.save();
-    this.gridCtx.strokeStyle = "#ccc";
-    this.gridCtx.lineWidth = 0.2;
-    for (let x = 0; x < width; x += gridSize) {
-      this.gridCtx.beginPath();
-      this.gridCtx.moveTo(x, 0);
-      this.gridCtx.lineTo(x, height);
-      this.gridCtx.stroke();
-    }
-    for (let y = 0; y < height; y += gridSize) {
-      this.gridCtx.beginPath();
-      this.gridCtx.moveTo(0, y);
-      this.gridCtx.lineTo(width, y);
-      this.gridCtx.stroke();
-    }
-    this.gridCtx.restore();
   }
 
   fitToAllPins() {
@@ -373,8 +331,8 @@ class DriftmapEditor extends HTMLElement {
     maxY += padding;
 
     // Calculate required scale to fit all pins
-    const canvasWidth = this.gridCanvas.width;
-    const canvasHeight = this.gridCanvas.height;
+    const canvasWidth = this.lineCanvas.width;
+    const canvasHeight = this.lineCanvas.height;
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
@@ -396,7 +354,6 @@ class DriftmapEditor extends HTMLElement {
   }
 
   redrawAll() {
-    this.drawGrid();
     this.redrawLines();
     this.renderPins();
   }
