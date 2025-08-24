@@ -77,7 +77,7 @@ class DriftmapEditor extends HTMLElement {
       this.shadowRoot.getElementById("interactionCanvas");
 
     const width = window.innerWidth;
-    const height = window.innerHeight;
+    const height = window.innerHeight - 200;
 
     [this.gridCanvas, this.lineCanvas, this.interactionCanvas].forEach(
       (canvas) => {
@@ -129,26 +129,34 @@ class DriftmapEditor extends HTMLElement {
     const pin = { x, y, memo };
     this.pins.push(pin);
     this.renderPins();
+
+    // Auto-fit to show all pins after adding a new one
+    this.fitToAllPins();
   };
 
   renderPins() {
     this.pinsEl.innerHTML = "";
     this.pins.forEach((pin, idx) => {
+      // Apply transformation to pin position
+      const transformedX = pin.x * this.scale + this.offsetX;
+      const transformedY = pin.y * this.scale + this.offsetY;
+
       const pinEl = document.createElement("div");
       pinEl.className = "pin";
-      pinEl.style.left = `${pin.x}px`;
-      pinEl.style.top = `${pin.y}px`;
+      pinEl.style.left = `${transformedX}px`;
+      pinEl.style.top = `${transformedY}px`;
       pinEl.dataset.idx = idx;
       this.pinsEl.appendChild(pinEl);
       if (pin.memo) {
         const memoEl = document.createElement("div");
         memoEl.className = "memo";
         memoEl.textContent = pin.memo;
-        memoEl.style.left = `${pin.x}px`;
-        memoEl.style.top = `${pin.y}px`;
+        memoEl.style.left = `${transformedX}px`;
+        memoEl.style.top = `${transformedY}px`;
         this.pinsEl.appendChild(memoEl);
       }
     });
+    this.fitToAllPins();
   }
 
   pinClick = (e) => {
@@ -214,7 +222,7 @@ class DriftmapEditor extends HTMLElement {
     const newPin = {
       x: to.x,
       y: to.y,
-      memo: "" // Empty memo for automatically created pins
+      memo: "", // Empty memo for automatically created pins
     };
     this.pins.push(newPin);
 
@@ -258,7 +266,14 @@ class DriftmapEditor extends HTMLElement {
 
   redrawLines() {
     this.lineCtx.clearRect(0, 0, this.lineCanvas.width, this.lineCanvas.height);
-    this.lineCtx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    this.lineCtx.setTransform(
+      this.scale,
+      0,
+      0,
+      this.scale,
+      this.offsetX,
+      this.offsetY,
+    );
     this.lines.forEach((line) => {
       this.lineCtx.beginPath();
       this.lineCtx.moveTo(line.from.x, line.from.y);
@@ -305,7 +320,14 @@ class DriftmapEditor extends HTMLElement {
 
   drawGrid() {
     this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
-    this.gridCtx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    this.gridCtx.setTransform(
+      this.scale,
+      0,
+      0,
+      this.scale,
+      this.offsetX,
+      this.offsetY,
+    );
     const gridSize = 50;
     const width = this.gridCanvas.width;
     const height = this.gridCanvas.height;
@@ -325,6 +347,58 @@ class DriftmapEditor extends HTMLElement {
       this.gridCtx.stroke();
     }
     this.gridCtx.restore();
+  }
+
+  fitToAllPins() {
+    if (this.pins.length === 0) return;
+
+    // Calculate bounding box of all pins
+    let minX = Infinity,
+      maxX = -Infinity;
+    let minY = Infinity,
+      maxY = -Infinity;
+
+    this.pins.forEach((pin) => {
+      minX = Math.min(minX, pin.x);
+      maxX = Math.max(maxX, pin.x);
+      minY = Math.min(minY, pin.y);
+      maxY = Math.max(maxY, pin.y);
+    });
+
+    // Add padding around the pins
+    const padding = 50;
+    minX -= padding;
+    maxX += padding;
+    minY -= padding;
+    maxY += padding;
+
+    // Calculate required scale to fit all pins
+    const canvasWidth = this.gridCanvas.width;
+    const canvasHeight = this.gridCanvas.height;
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+
+    const scaleX = canvasWidth / contentWidth;
+    const scaleY = canvasHeight / contentHeight;
+
+    // Use the smaller scale to ensure everything fits
+    this.scale = Math.min(scaleX, scaleY, 3); // Max scale of 3
+    this.scale = Math.max(this.scale, 0.1); // Min scale of 0.1
+
+    // Calculate offset to center the content
+    const scaledContentWidth = contentWidth * this.scale;
+    const scaledContentHeight = contentHeight * this.scale;
+
+    this.offsetX = (canvasWidth - scaledContentWidth) / 2 - minX * this.scale;
+    this.offsetY = (canvasHeight - scaledContentHeight) / 2 - minY * this.scale;
+
+    this.redrawAll();
+  }
+
+  redrawAll() {
+    this.drawGrid();
+    this.redrawLines();
+    this.renderPins();
   }
 }
 
