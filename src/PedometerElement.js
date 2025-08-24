@@ -28,10 +28,6 @@ class DriftmapPedometer extends HTMLElement {
       </div>
     `;
     this.stepInput = this.shadowRoot.getElementById("stepInput");
-    this.shadowRoot.getElementById("addStep").addEventListener("click", () => {
-      const n = parseInt(this.stepInput.value, 10) || 0;
-      this.addSteps(n);
-    });
     this.shadowRoot
       .getElementById("reset")
       .addEventListener("click", () => this.resetSteps());
