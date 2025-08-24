@@ -21,12 +21,33 @@ export function drawCompass(ctx, angle) {
   ctx.save();
   ctx.translate(100, 100);
   ctx.rotate((angle * Math.PI) / 180);
+
+  const needleBottomLength = 5;
+
+  // North needle (red triangle)
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(0, -70);
-  ctx.strokeStyle = "#e00";
-  ctx.lineWidth = 6;
+  ctx.moveTo(0, -70);
+  ctx.lineTo(-needleBottomLength, 0);
+  ctx.lineTo(needleBottomLength, 0);
+  ctx.closePath();
+  ctx.fillStyle = "#e00";
+  ctx.fill();
+  ctx.strokeStyle = "#a00";
+  ctx.lineWidth = 1;
   ctx.stroke();
+
+  // South needle (white triangle with black border)
+  ctx.beginPath();
+  ctx.moveTo(0, 70);
+  ctx.lineTo(-needleBottomLength, 0);
+  ctx.lineTo(needleBottomLength, 0);
+  ctx.closePath();
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
   ctx.restore();
 }
 
