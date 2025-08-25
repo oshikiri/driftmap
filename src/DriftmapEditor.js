@@ -302,11 +302,6 @@ class DriftmapEditor extends HTMLElement {
     this.lastDist = null;
   };
 
-  redrawAll() {
-    this.redrawLines();
-    this.renderPins();
-  }
-
   fitToAllPins() {
     if (this.pins.length === 0) return;
 
