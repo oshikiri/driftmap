@@ -17,7 +17,7 @@ jobs:
       - name: Setup public/ directory
         run: |
           mkdir public
-          cp src/* ./public/
+          cp --recursive src/* ./public/
       - name: Setup Pages
         if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v4
