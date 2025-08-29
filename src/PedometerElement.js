@@ -23,7 +23,7 @@ class DriftmapPedometer extends HTMLElement {
         }
       </style>
       <div class="container">
-        <input id="stepInput" type="number" min="1" value="0" />
+        <input id="stepInput" type="number" min="0" value="0" />
         <button id="reset">Reset</button>
       </div>
     `;
