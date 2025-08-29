@@ -192,7 +192,7 @@ class DriftmapEditor extends HTMLElement {
   // 画面座標(sx, sy)からピンを追加（ワールド変換付き）
   createPinAt(sx, sy) {
     const { x: wx, y: wy } = this.screenToWorld(sx, sy);
-    const memo = prompt("メモを入力してください");
+    const memo = prompt("Enter a memo");
     if (memo === null) return;
     const pin = { x: wx, y: wy, memo };
     this.pins.push(pin);
@@ -241,7 +241,7 @@ class DriftmapEditor extends HTMLElement {
 
     inputDiv.innerHTML = `
       <header>
-        <span class=\"close\" id=\"closeBtn\" aria-label=\"閉じる\">×</span>
+        <span class=\"close\" id=\"closeBtn\" aria-label=\"Close\">×</span>
       </header>
       <div class=\"row\">
         <label for=\"angleInput\">Angle(°)</label>
@@ -294,7 +294,7 @@ class DriftmapEditor extends HTMLElement {
 
   editPinName(idx) {
     const pin = this.pins[idx];
-    const newName = prompt("ピンの名前を編集", pin.memo);
+    const newName = prompt("Edit pin name", pin.memo);
     if (newName !== null) {
       pin.memo = newName;
       this.redrawScene();
