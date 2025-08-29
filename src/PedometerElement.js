@@ -35,8 +35,8 @@ class DriftmapPedometer extends HTMLElement {
     window.addEventListener("devicemotion", this.handleMotion);
   }
 
-  addSteps(n) {
-    this.stepInput.value = (parseInt(this.stepInput.value, 10) || 0) + n;
+  increamentSteps() {
+    this.stepInput.value = (parseInt(this.stepInput.value, 10) || 0) + 1;
   }
 
   resetSteps() {
@@ -49,7 +49,7 @@ class DriftmapPedometer extends HTMLElement {
     if (!acc) return;
     const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
     if (magnitude > this.peakThreshold && Date.now() - this.lastPeak > 400) {
-      this.addSteps(1);
+      this.increamentSteps();
       this.lastPeak = Date.now();
     }
   };
