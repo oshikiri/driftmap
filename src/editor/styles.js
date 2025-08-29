@@ -1,85 +1,140 @@
 export const editorStyles = `
-  .canvas-wrapper {
-    height: 70vh;
-    position: relative;
+  :host {
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
   }
+
+  .canvas-wrapper {
+    height: 100vh;
+    position: relative;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: none;
+    background: radial-gradient(1600px 900px at 30% 20%, #fbf7ea 0%, var(--paper-bg) 60%, var(--paper-bg-2) 100%);
+  }
+
   canvas {
     position: absolute;
     top: 0;
     left: 0;
     cursor: crosshair;
   }
+
   #sceneCanvas {
     z-index: 2;
     pointer-events: none;
+    /* subtle sepia grid over parchment */
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      linear-gradient(var(--grid-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
+    background-size:
+      16px 16px,
+      16px 16px,
+      80px 80px,
+      80px 80px;
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
   }
+
   #interactionCanvas {
     z-index: 3;
     background: transparent;
     touch-action: none;
   }
+
+  /* Popover (classic card) */
   .line-input-popover {
     position: absolute;
-    min-width: 200px;
-    max-width: 280px;
-    padding: 8px 10px;
-    background: #ffffff;
-    border: 1px solid #d0d7de;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    min-width: 220px;
+    max-width: 320px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0,0,0,0.18);
     z-index: 10;
-    color: #222;
+    color: var(--text);
     font-size: 14px;
     line-height: 1.4;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .line-input-popover header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   .line-input-popover header .close {
     cursor: pointer;
     font-size: 16px;
-    color: #666;
-    padding: 0 4px;
-    border-radius: 4px;
+    color: #5a513e;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: background 0.15s ease, transform 0.1s ease;
   }
   .line-input-popover header .close:hover {
-    background: #f2f2f2;
+    background: rgba(0,0,0,0.06);
+  }
+  .line-input-popover header .close:active {
+    transform: scale(0.96);
   }
   .line-input-popover .row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin: 6px 0;
+    gap: 8px;
+    margin: 8px 0;
   }
   .line-input-popover label {
     white-space: nowrap;
-    min-width: 84px;
+    min-width: 90px;
+    color: #495267;
   }
   .line-input-popover input[type="number"] {
-    width: 6em;
-    padding: 4px 6px;
+    width: 7em;
+    padding: 6px 8px;
     font-size: 14px;
     border: 1px solid #c8c8c8;
-    border-radius: 4px;
+    border-radius: 8px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .line-input-popover input[type="number"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
   }
   .line-input-popover .actions {
-    margin-top: 8px;
+    margin-top: 12px;
     display: flex;
-    gap: 8px;
+    gap: 10px;
     justify-content: flex-end;
   }
+
   button {
     align-self: flex-end;
-    padding: 0.5em 1em;
-    font-size: 1em;
-    border-radius: 4px;
-    border: none;
-    background: #1976d2;
+    padding: 0.55em 1.1em;
+    font-size: 0.95em;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.04);
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-600) 100%);
     color: #fff;
     cursor: pointer;
+    box-shadow: 0 6px 16px rgba(25,118,210,0.35), 0 2px 6px rgba(0,0,0,0.15);
+    transition: transform 0.08s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  }
+  button:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 8px 20px rgba(25,118,210,0.45), 0 3px 8px rgba(0,0,0,0.18);
+  }
+  button:active {
+    transform: translateY(1px) scale(0.99);
   }
 `;

@@ -14,37 +14,45 @@ class CompassElement extends HTMLElement {
           justify-content: center;
           align-items: flex-end;
           width: 100vw;
-          height: 220px;
+          height: 240px;
         }
         #container {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: flex-end;
-          width: 220px;
-          height: 220px;
+          width: 240px;
+          height: 240px;
           position: relative;
+          filter: drop-shadow(0 18px 35px rgba(0,0,0,0.35)) drop-shadow(0 3px 12px rgba(0,0,0,0.2));
         }
         #canvas {
-          background: radial-gradient(circle at 60% 40%, #fff 60%, #1976d2 100%);
+          background: transparent;
           border-radius: 50%;
-          box-shadow: 0 8px 32px rgba(25, 118, 210, 0.25), 0 2px 8px #aaa;
-          border: 4px solid #1976d2;
-          transition: box-shadow 0.2s;
+          box-shadow: 0 10px 28px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.2);
+          transition: transform 0.15s ease, box-shadow 0.25s ease, filter 0.25s ease;
+          position: relative;
+          z-index: 1;
+        }
+        #canvas:hover {
+          filter: none;
+          box-shadow: 0 12px 34px rgba(0,0,0,0.32), 0 3px 10px rgba(0,0,0,0.26);
         }
         #label {
           position: absolute;
           left: 0;
           bottom: 0;
-          font-size: 0.7em;
-          font-weight: bold;
-          background: rgba(255,255,255,0.85);
-          color: #1976d2;
+          font-size: 0.8em;
+          font-weight: 700;
+          color: var(--text);
           padding: 6px 10px;
           border-radius: 16px;
-          box-shadow: 0 2px 8px #aaa;
-          letter-spacing: 0.1em;
-          border: 1px solid #1976d2;
+          letter-spacing: 0.12em;
+          background: var(--panel);
+          border: 1px solid var(--panel-border);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
         }
       </style>
       <div id="container">

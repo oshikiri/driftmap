@@ -1,7 +1,29 @@
+:root {
+  /* Classic parchment theme */
+  --paper-bg: #f3ecd6;
+  --paper-bg-2: #efe5c6;
+  --grid: rgba(92, 74, 31, 0.16);
+  --grid-strong: rgba(92, 74, 31, 0.28);
+  --panel: #faf6e9;
+  --panel-border: #d8cfb0;
+  --text: #3b2f1b;
+  --ink: #5c4a1f;
+  --brass: #b79a38;
+  --brass-600: #9f8631;
+  --accent: #7a0f0f;
+}
+
 body {
   font-family: sans-serif;
-  background: #001427ff;
+  background: var(--paper-bg);
   margin: 0;
+}
+
+driftmap-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
 }
 
 driftmap-compass {
@@ -16,5 +38,6 @@ driftmap-pedometer {
   z-index: 2;
   position: absolute;
   left: 0;
-  bottom: 0;
+  top: 0;
+  padding: 10px;
 }
