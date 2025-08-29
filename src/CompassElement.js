@@ -42,6 +42,7 @@ class CompassElement extends HTMLElement {
           position: absolute;
           left: 0;
           bottom: 0;
+          z-index: 2; /* ensure label sits above canvas */
           font-size: 0.8em;
           font-weight: 700;
           color: var(--text);
