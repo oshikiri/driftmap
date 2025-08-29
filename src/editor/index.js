@@ -1,15 +1,14 @@
-import { getBoundingBox } from "./pins.js";
 import {
   TAP_MOVE_THRESHOLD,
   LONG_PRESS_MS,
   PIN_HIT_THRESHOLD,
-  FIT_PADDING,
-  MAX_FIT_SCALE,
   MIN_SCALE,
   MAX_PINCH_SCALE,
 } from "./constants.js";
 import { screenToWorld, worldToScreen } from "./coords.js";
 import { drawScene } from "./renderer.js";
+import { EditorState } from "./state.js";
+import { buildLineInputPopover } from "./popovers/lineInputPopover.js";
 
 class DriftmapEditor extends HTMLElement {
   constructor() {
@@ -131,16 +130,12 @@ class DriftmapEditor extends HTMLElement {
   }
 
   initState() {
-    this.pins = [];
-    this.lines = [];
+    this.state = new EditorState();
     this.selectedPin = null;
     this._longPressTimer = null;
     this._pointers = new Map(); // pointerId -> { x, y }
     this._pinchCenter = null;
-    this.scale = 1;
     this.lastDist = null; // pinch distance (in screen px)
-    this.offsetX = 0;
-    this.offsetY = 0;
     this.TAP_MOVE_THRESHOLD = TAP_MOVE_THRESHOLD; // px
     this.LONG_PRESS_MS = LONG_PRESS_MS; // ms
     this._tapCandidate = null; // { x, y, time, hitIdx }
@@ -148,7 +143,7 @@ class DriftmapEditor extends HTMLElement {
   }
 
   getTransform() {
-    return { scale: this.scale, offsetX: this.offsetX, offsetY: this.offsetY };
+    return this.state.getTransform();
   }
 
   setCanvasSizeFromWindow() {
@@ -195,14 +190,14 @@ class DriftmapEditor extends HTMLElement {
     const memo = prompt("Enter a memo");
     if (memo === null) return;
     const pin = { x: wx, y: wy, memo };
-    this.pins.push(pin);
+    this.state.addPin(pin);
     this.fitToAllPins();
   }
 
   getPinIndexAtScreen(sx, sy, thresholdPx = PIN_HIT_THRESHOLD) {
     let hit = -1;
     let best = Infinity;
-    this.pins.forEach((pin, idx) => {
+    this.state.pins.forEach((pin, idx) => {
       const { x: px, y: py } = worldToScreen(pin.x, pin.y, this.getTransform());
       const dx = px - sx;
       const dy = py - sy;
@@ -216,85 +211,31 @@ class DriftmapEditor extends HTMLElement {
   }
 
   showLineInput(idx) {
-    const inputDiv = this.buildLineInputPopover(idx);
+    const { x: baseSx, y: baseSy } = worldToScreen(
+      this.state.pins[idx].x,
+      this.state.pins[idx].y,
+      this.getTransform(),
+    );
+    const inputDiv = buildLineInputPopover({
+      screenX: baseSx,
+      screenY: baseSy,
+      canvasWidth: this.sceneCanvas.width,
+      canvasHeight: this.sceneCanvas.height,
+      onSubmit: (angle, length) => this.drawManualLine(idx, angle, length),
+      onClose: () => {
+        this.selectedPin = null;
+      },
+    });
     this.pinsEl.appendChild(inputDiv);
   }
 
-  buildLineInputPopover(idx) {
-    const inputDiv = document.createElement("div");
-    inputDiv.className = "line-input-popover";
-    // スクリーン座標へ変換して配置（少し右上にオフセット）
-    const { x: baseSx, y: baseSy } = worldToScreen(
-      this.pins[idx].x,
-      this.pins[idx].y,
-      this.getTransform(),
-    );
-    const offset = 12;
-    let sx = baseSx + offset;
-    let sy = baseSy - offset;
-    // 画面端を超えないよう簡易クランプ
-    const maxX = this.sceneCanvas.width - 240;
-    const maxY = this.sceneCanvas.height - 140;
-    sx = Math.max(8, Math.min(sx, maxX));
-    sy = Math.max(8, Math.min(sy, maxY));
-    inputDiv.style.left = `${sx}px`;
-    inputDiv.style.top = `${sy}px`;
-
-    inputDiv.innerHTML = `
-      <header>
-        <span class=\"close\" id=\"closeBtn\" aria-label=\"Close\">×</span>
-      </header>
-      <div class=\"row\">
-        <label for=\"angleInput\">Angle(°)</label>
-        <input type=\"number\" id=\"angleInput\" value=\"0\" inputmode=\"decimal\" />
-      </div>
-      <div class=\"row\">
-        <label for=\"lengthInput\">Length</label>
-        <input type=\"number\" id=\"lengthInput\" value=\"50\" inputmode=\"decimal\" />
-      </div>
-      <div class=\"actions\">
-        <button id=\"drawLineBtn\">Draw</button>
-      </div>
-    `;
-    // キャンバスへのイベント伝播を防ぐ
-    inputDiv.addEventListener("pointerdown", (ev) => ev.stopPropagation());
-    inputDiv.addEventListener("click", (ev) => ev.stopPropagation());
-
-    const run = () => {
-      const angle = parseFloat(inputDiv.querySelector("#angleInput").value);
-      const length = parseFloat(inputDiv.querySelector("#lengthInput").value);
-      if (!isFinite(angle) || !isFinite(length)) return;
-      this.drawManualLine(idx, angle, length);
-      inputDiv.remove();
-      this.selectedPin = null;
-    };
-    inputDiv.querySelector("#drawLineBtn").onclick = run;
-    inputDiv.querySelector("#closeBtn").onclick = () => inputDiv.remove();
-    return inputDiv;
-  }
-
   drawManualLine(idx, angle, length) {
-    const rad = (angle * Math.PI) / 180;
-    const from = this.pins[idx];
-    const to = {
-      x: from.x + Math.sin(rad) * length,
-      y: from.y - Math.cos(rad) * length,
-    };
-    this.lines.push({ from: { x: from.x, y: from.y }, to });
-
-    // Automatically add a pin at the end of the line
-    const newPin = {
-      x: to.x,
-      y: to.y,
-      memo: "", // Empty memo for automatically created pins
-    };
-    this.pins.push(newPin);
-
+    this.state.addLineFromIndex(idx, angle, length);
     this.fitToAllPins();
   }
 
   editPinName(idx) {
-    const pin = this.pins[idx];
+    const pin = this.state.pins[idx];
     const newName = prompt("Edit pin name", pin.memo);
     if (newName !== null) {
       pin.memo = newName;
@@ -303,7 +244,12 @@ class DriftmapEditor extends HTMLElement {
   }
 
   redrawScene() {
-    drawScene(this.sceneCtx, this.getTransform(), this.lines, this.pins);
+    drawScene(
+      this.sceneCtx,
+      this.getTransform(),
+      this.state.lines,
+      this.state.pins,
+    );
   }
 
   // Pointer Events: unified touch/mouse/pen handling
@@ -362,7 +308,7 @@ class DriftmapEditor extends HTMLElement {
       const dy = pts[0].y - pts[1].y;
       const dist = Math.hypot(dx, dy);
       if (this.lastDist && this._pinchCenter) {
-        const prevScale = this.scale;
+        const prevScale = this.state.scale;
         const factor = dist / this.lastDist;
         const newScale = Math.max(
           MIN_SCALE,
@@ -370,11 +316,11 @@ class DriftmapEditor extends HTMLElement {
         );
         const cx = this._pinchCenter.x;
         const cy = this._pinchCenter.y;
-        const wx = (cx - this.offsetX) / prevScale;
-        const wy = (cy - this.offsetY) / prevScale;
-        this.scale = newScale;
-        this.offsetX = cx - wx * newScale;
-        this.offsetY = cy - wy * newScale;
+        const wx = (cx - this.state.offsetX) / prevScale;
+        const wy = (cy - this.state.offsetY) / prevScale;
+        this.state.scale = newScale;
+        this.state.offsetX = cx - wx * newScale;
+        this.state.offsetY = cy - wy * newScale;
         this.redrawScene();
       }
       this.lastDist = dist;
@@ -430,40 +376,11 @@ class DriftmapEditor extends HTMLElement {
   };
 
   fitToAllPins() {
-    if (this.pins.length === 0) return;
-
-    // Calculate bounding box of all pins
-    let [minX, maxX, minY, maxY] = getBoundingBox(this.pins);
-
-    // Add padding around the pins
-    const padding = FIT_PADDING;
-    minX -= padding;
-    maxX += padding;
-    minY -= padding;
-    maxY += padding;
-
-    // Calculate required scale to fit all pins
-    const canvasWidth = this.sceneCanvas.width;
-    const canvasHeight = this.sceneCanvas.height;
-    const contentWidth = maxX - minX;
-    const contentHeight = maxY - minY;
-
-    const scaleX = canvasWidth / contentWidth;
-    const scaleY = canvasHeight / contentHeight;
-
-    // Use the smaller scale to ensure everything fits
-    this.scale = Math.min(scaleX, scaleY, MAX_FIT_SCALE);
-    this.scale = Math.max(this.scale, MIN_SCALE);
-
-    // Calculate offset to center the content
-    const scaledContentWidth = contentWidth * this.scale;
-    const scaledContentHeight = contentHeight * this.scale;
-
-    this.offsetX = (canvasWidth - scaledContentWidth) / 2 - minX * this.scale;
-    this.offsetY = (canvasHeight - scaledContentHeight) / 2 - minY * this.scale;
-
+    this.state.fitToAllPins(this.sceneCanvas.width, this.sceneCanvas.height);
     this.redrawScene();
   }
 }
 
-customElements.define("driftmap-editor", DriftmapEditor);
+if (!customElements.get("driftmap-editor")) {
+  customElements.define("driftmap-editor", DriftmapEditor);
+}
