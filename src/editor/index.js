@@ -4,7 +4,17 @@ class DriftmapEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = this.renderTemplate();
+    this.cacheElements();
+    this.initState();
+    this.setCanvasSizeFromWindow();
+    this.bindEventListeners();
+    this.redrawScene();
+  }
+
+  // ---------- Setup / Template ----------
+  renderTemplate() {
+    return `
       <style>
         .canvas-wrapper {
           height: 70vh;
@@ -98,57 +108,90 @@ class DriftmapEditor extends HTMLElement {
         </div>
       </div>
     `;
+  }
 
-    // Initialize canvases
+  cacheElements() {
     this.sceneCanvas = this.shadowRoot.getElementById("sceneCanvas");
     this.interactionCanvas =
       this.shadowRoot.getElementById("interactionCanvas");
-
-    const width = window.innerWidth;
-    const height = window.innerHeight - 200;
-
-    [this.sceneCanvas, this.interactionCanvas].forEach((canvas) => {
-      canvas.width = width;
-      canvas.height = height;
-    });
-
-    // Scene context renders lines and pins
     this.sceneCtx = this.sceneCanvas.getContext("2d");
     this.interactionCtx = this.interactionCanvas.getContext("2d");
-
     this.pinsEl = this.shadowRoot.getElementById("pins");
+  }
+
+  initState() {
     this.pins = [];
     this.lines = [];
     this.selectedPin = null;
     this._longPressTimer = null;
-
-    // Event listeners: Pointer Events API
-    // pointerId -> { x, y }
-    this._pointers = new Map();
+    this._pointers = new Map(); // pointerId -> { x, y }
     this._pinchCenter = null;
-    this.interactionCanvas.addEventListener("pointerdown", this.onPointerDown);
-    this.interactionCanvas.addEventListener("pointermove", this.onPointerMove);
-    this.interactionCanvas.addEventListener("pointerup", this.onPointerUp);
-    this.interactionCanvas.addEventListener("pointercancel", this.onPointerUp);
-
     this.scale = 1;
-    // pinch distance (in screen px)
-    this.lastDist = null;
+    this.lastDist = null; // pinch distance (in screen px)
     this.offsetX = 0;
     this.offsetY = 0;
-    // タップ/長押しのための閾値と状態
     this.TAP_MOVE_THRESHOLD = 8; // px
     this.LONG_PRESS_MS = 600; // ms
     this._tapCandidate = null; // { x, y, time, hitIdx }
     this._pinching = false; // 2本指ジェスチャ中
+  }
 
-    this.redrawScene();
+  setCanvasSizeFromWindow() {
+    const width = window.innerWidth;
+    const height = window.innerHeight - 200;
+    [this.sceneCanvas, this.interactionCanvas].forEach((canvas) => {
+      canvas.width = width;
+      canvas.height = height;
+    });
+  }
+
+  bindEventListeners() {
+    this.interactionCanvas.addEventListener("pointerdown", this.onPointerDown);
+    this.interactionCanvas.addEventListener("pointermove", this.onPointerMove);
+    this.interactionCanvas.addEventListener("pointerup", this.onPointerUp);
+    this.interactionCanvas.addEventListener("pointercancel", this.onPointerUp);
+  }
+
+  disconnectedCallback() {
+    if (this.interactionCanvas) {
+      this.interactionCanvas.removeEventListener(
+        "pointerdown",
+        this.onPointerDown,
+      );
+      this.interactionCanvas.removeEventListener(
+        "pointermove",
+        this.onPointerMove,
+      );
+      this.interactionCanvas.removeEventListener("pointerup", this.onPointerUp);
+      this.interactionCanvas.removeEventListener(
+        "pointercancel",
+        this.onPointerUp,
+      );
+    }
+    if (this._longPressTimer) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+    }
+  }
+
+  // ---------- Coordinate Utilities ----------
+  screenToWorld(sx, sy) {
+    return {
+      x: (sx - this.offsetX) / this.scale,
+      y: (sy - this.offsetY) / this.scale,
+    };
+  }
+
+  worldToScreen(wx, wy) {
+    return {
+      x: wx * this.scale + this.offsetX,
+      y: wy * this.scale + this.offsetY,
+    };
   }
 
   // 画面座標(sx, sy)からピンを追加（ワールド変換付き）
   createPinAt(sx, sy) {
-    const wx = (sx - this.offsetX) / this.scale;
-    const wy = (sy - this.offsetY) / this.scale;
+    const { x: wx, y: wy } = this.screenToWorld(sx, sy);
     const memo = prompt("メモを入力してください");
     if (memo === null) return;
     const pin = { x: wx, y: wy, memo };
@@ -160,8 +203,7 @@ class DriftmapEditor extends HTMLElement {
     let hit = -1;
     let best = Infinity;
     this.pins.forEach((pin, idx) => {
-      const px = pin.x * this.scale + this.offsetX;
-      const py = pin.y * this.scale + this.offsetY;
+      const { x: px, y: py } = this.worldToScreen(pin.x, pin.y);
       const dx = px - sx;
       const dy = py - sy;
       const d = Math.hypot(dx, dy);
@@ -174,11 +216,18 @@ class DriftmapEditor extends HTMLElement {
   }
 
   showLineInput(idx) {
+    const inputDiv = this.buildLineInputPopover(idx);
+    this.pinsEl.appendChild(inputDiv);
+  }
+
+  buildLineInputPopover(idx) {
     const inputDiv = document.createElement("div");
     inputDiv.className = "line-input-popover";
     // スクリーン座標へ変換して配置（少し右上にオフセット）
-    const baseSx = this.pins[idx].x * this.scale + this.offsetX;
-    const baseSy = this.pins[idx].y * this.scale + this.offsetY;
+    const { x: baseSx, y: baseSy } = this.worldToScreen(
+      this.pins[idx].x,
+      this.pins[idx].y,
+    );
     const offset = 12;
     let sx = baseSx + offset;
     let sy = baseSy - offset;
@@ -192,24 +241,23 @@ class DriftmapEditor extends HTMLElement {
 
     inputDiv.innerHTML = `
       <header>
-        <span class="close" id="closeBtn" aria-label="閉じる">×</span>
+        <span class=\"close\" id=\"closeBtn\" aria-label=\"閉じる\">×</span>
       </header>
-      <div class="row">
-        <label for="angleInput">Angle(°)</label>
-        <input type="number" id="angleInput" value="0" inputmode="decimal" />
+      <div class=\"row\">
+        <label for=\"angleInput\">Angle(°)</label>
+        <input type=\"number\" id=\"angleInput\" value=\"0\" inputmode=\"decimal\" />
       </div>
-      <div class="row">
-        <label for="lengthInput">Length</label>
-        <input type="number" id="lengthInput" value="50" inputmode="decimal" />
+      <div class=\"row\">
+        <label for=\"lengthInput\">Length</label>
+        <input type=\"number\" id=\"lengthInput\" value=\"50\" inputmode=\"decimal\" />
       </div>
-      <div class="actions">
-        <button id="drawLineBtn">Draw</button>
+      <div class=\"actions\">
+        <button id=\"drawLineBtn\">Draw</button>
       </div>
     `;
     // キャンバスへのイベント伝播を防ぐ
     inputDiv.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     inputDiv.addEventListener("click", (ev) => ev.stopPropagation());
-    this.pinsEl.appendChild(inputDiv);
 
     const run = () => {
       const angle = parseFloat(inputDiv.querySelector("#angleInput").value);
@@ -221,6 +269,7 @@ class DriftmapEditor extends HTMLElement {
     };
     inputDiv.querySelector("#drawLineBtn").onclick = run;
     inputDiv.querySelector("#closeBtn").onclick = () => inputDiv.remove();
+    return inputDiv;
   }
 
   drawManualLine(idx, angle, length) {
