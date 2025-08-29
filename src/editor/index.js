@@ -1,4 +1,15 @@
 import { getBoundingBox } from "./pins.js";
+import {
+  TAP_MOVE_THRESHOLD,
+  LONG_PRESS_MS,
+  PIN_HIT_THRESHOLD,
+  FIT_PADDING,
+  MAX_FIT_SCALE,
+  MIN_SCALE,
+  MAX_PINCH_SCALE,
+} from "./constants.js";
+import { screenToWorld, worldToScreen } from "./coords.js";
+import { drawScene } from "./renderer.js";
 
 class DriftmapEditor extends HTMLElement {
   constructor() {
@@ -130,10 +141,14 @@ class DriftmapEditor extends HTMLElement {
     this.lastDist = null; // pinch distance (in screen px)
     this.offsetX = 0;
     this.offsetY = 0;
-    this.TAP_MOVE_THRESHOLD = 8; // px
-    this.LONG_PRESS_MS = 600; // ms
+    this.TAP_MOVE_THRESHOLD = TAP_MOVE_THRESHOLD; // px
+    this.LONG_PRESS_MS = LONG_PRESS_MS; // ms
     this._tapCandidate = null; // { x, y, time, hitIdx }
     this._pinching = false; // 2本指ジェスチャ中
+  }
+
+  getTransform() {
+    return { scale: this.scale, offsetX: this.offsetX, offsetY: this.offsetY };
   }
 
   setCanvasSizeFromWindow() {
@@ -174,24 +189,9 @@ class DriftmapEditor extends HTMLElement {
     }
   }
 
-  // ---------- Coordinate Utilities ----------
-  screenToWorld(sx, sy) {
-    return {
-      x: (sx - this.offsetX) / this.scale,
-      y: (sy - this.offsetY) / this.scale,
-    };
-  }
-
-  worldToScreen(wx, wy) {
-    return {
-      x: wx * this.scale + this.offsetX,
-      y: wy * this.scale + this.offsetY,
-    };
-  }
-
   // 画面座標(sx, sy)からピンを追加（ワールド変換付き）
   createPinAt(sx, sy) {
-    const { x: wx, y: wy } = this.screenToWorld(sx, sy);
+    const { x: wx, y: wy } = screenToWorld(sx, sy, this.getTransform());
     const memo = prompt("Enter a memo");
     if (memo === null) return;
     const pin = { x: wx, y: wy, memo };
@@ -199,11 +199,11 @@ class DriftmapEditor extends HTMLElement {
     this.fitToAllPins();
   }
 
-  getPinIndexAtScreen(sx, sy, thresholdPx = 10) {
+  getPinIndexAtScreen(sx, sy, thresholdPx = PIN_HIT_THRESHOLD) {
     let hit = -1;
     let best = Infinity;
     this.pins.forEach((pin, idx) => {
-      const { x: px, y: py } = this.worldToScreen(pin.x, pin.y);
+      const { x: px, y: py } = worldToScreen(pin.x, pin.y, this.getTransform());
       const dx = px - sx;
       const dy = py - sy;
       const d = Math.hypot(dx, dy);
@@ -224,9 +224,10 @@ class DriftmapEditor extends HTMLElement {
     const inputDiv = document.createElement("div");
     inputDiv.className = "line-input-popover";
     // スクリーン座標へ変換して配置（少し右上にオフセット）
-    const { x: baseSx, y: baseSy } = this.worldToScreen(
+    const { x: baseSx, y: baseSy } = worldToScreen(
       this.pins[idx].x,
       this.pins[idx].y,
+      this.getTransform(),
     );
     const offset = 12;
     let sx = baseSx + offset;
@@ -302,64 +303,7 @@ class DriftmapEditor extends HTMLElement {
   }
 
   redrawScene() {
-    // Clear and render the whole scene (lines + pins)
-    // Reset transform before clearing to avoid partial clears/ghosts
-    if (this.sceneCtx.resetTransform) {
-      this.sceneCtx.resetTransform();
-    } else {
-      this.sceneCtx.setTransform(1, 0, 0, 1, 0, 0);
-    }
-    this.sceneCtx.clearRect(
-      0,
-      0,
-      this.sceneCanvas.width,
-      this.sceneCanvas.height,
-    );
-    this.sceneCtx.setTransform(
-      this.scale,
-      0,
-      0,
-      this.scale,
-      this.offsetX,
-      this.offsetY,
-    );
-    this.lines.forEach((line) => {
-      this.drawLine(line);
-    });
-    this.pins.forEach((pin) => {
-      this.drawPin(pin);
-    });
-  }
-
-  drawLine(line) {
-    this.sceneCtx.beginPath();
-    this.sceneCtx.moveTo(line.from.x, line.from.y);
-    this.sceneCtx.lineTo(line.to.x, line.to.y);
-    this.sceneCtx.strokeStyle = "#1976d2";
-    this.sceneCtx.lineWidth = 2;
-    this.sceneCtx.stroke();
-  }
-
-  drawPin(pin) {
-    const r = 6;
-    this.sceneCtx.beginPath();
-    this.sceneCtx.fillStyle = "#740027";
-    this.sceneCtx.strokeStyle = "#fff";
-    this.sceneCtx.lineWidth = 2 / this.scale;
-    this.sceneCtx.arc(pin.x, pin.y, r, 0, Math.PI * 2);
-    this.sceneCtx.fill();
-    this.sceneCtx.stroke();
-    if (pin.memo) {
-      this.sceneCtx.save();
-      this.sceneCtx.font = `${12 / this.scale}px sans-serif`;
-      this.sceneCtx.textBaseline = "bottom";
-      this.sceneCtx.lineWidth = 3 / this.scale;
-      this.sceneCtx.strokeStyle = "#fff";
-      this.sceneCtx.fillStyle = "#333";
-      this.sceneCtx.strokeText(pin.memo, pin.x + r + 4 / this.scale, pin.y - r);
-      this.sceneCtx.fillText(pin.memo, pin.x + r + 4 / this.scale, pin.y - r);
-      this.sceneCtx.restore();
-    }
+    drawScene(this.sceneCtx, this.getTransform(), this.lines, this.pins);
   }
 
   // Pointer Events: unified touch/mouse/pen handling
@@ -420,7 +364,10 @@ class DriftmapEditor extends HTMLElement {
       if (this.lastDist && this._pinchCenter) {
         const prevScale = this.scale;
         const factor = dist / this.lastDist;
-        const newScale = Math.max(0.1, Math.min(6, prevScale * factor));
+        const newScale = Math.max(
+          MIN_SCALE,
+          Math.min(MAX_PINCH_SCALE, prevScale * factor),
+        );
         const cx = this._pinchCenter.x;
         const cy = this._pinchCenter.y;
         const wx = (cx - this.offsetX) / prevScale;
@@ -489,7 +436,7 @@ class DriftmapEditor extends HTMLElement {
     let [minX, maxX, minY, maxY] = getBoundingBox(this.pins);
 
     // Add padding around the pins
-    const padding = 50;
+    const padding = FIT_PADDING;
     minX -= padding;
     maxX += padding;
     minY -= padding;
@@ -505,8 +452,8 @@ class DriftmapEditor extends HTMLElement {
     const scaleY = canvasHeight / contentHeight;
 
     // Use the smaller scale to ensure everything fits
-    this.scale = Math.min(scaleX, scaleY, 3); // Max scale of 3
-    this.scale = Math.max(this.scale, 0.1); // Min scale of 0.1
+    this.scale = Math.min(scaleX, scaleY, MAX_FIT_SCALE);
+    this.scale = Math.max(this.scale, MIN_SCALE);
 
     // Calculate offset to center the content
     const scaledContentWidth = contentWidth * this.scale;
