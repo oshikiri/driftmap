@@ -108,8 +108,8 @@ export const editorStyles = `
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .line-input-popover input[type="number"]:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(183, 154, 56, 0.20);
   }
   .line-input-popover .actions {
     margin-top: 12px;
@@ -124,17 +124,21 @@ export const editorStyles = `
     font-size: 0.95em;
     border-radius: 10px;
     border: 1px solid rgba(0,0,0,0.04);
-    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-600) 100%);
+    background: linear-gradient(180deg, var(--brass) 0%, var(--brass-600) 100%);
     color: #fff;
     cursor: pointer;
-    box-shadow: 0 6px 16px rgba(25,118,210,0.35), 0 2px 6px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 16px rgba(183,154,56,0.35), 0 2px 6px rgba(0,0,0,0.15);
     transition: transform 0.08s ease, box-shadow 0.2s ease, filter 0.2s ease;
   }
   button:hover {
     filter: brightness(1.05);
-    box-shadow: 0 8px 20px rgba(25,118,210,0.45), 0 3px 8px rgba(0,0,0,0.18);
+    box-shadow: 0 8px 20px rgba(183,154,56,0.45), 0 3px 8px rgba(0,0,0,0.18);
   }
   button:active {
     transform: translateY(1px) scale(0.99);
+  }
+  .line-input-popover #drawLineBtn {
+    background: linear-gradient(180deg, var(--brass) 0%, var(--brass-600) 100%);
+    box-shadow: 0 6px 16px rgba(183,154,56,0.35), 0 2px 6px rgba(0,0,0,0.15);
   }
 `;
