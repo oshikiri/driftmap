@@ -34,4 +34,4 @@
 ## データ形（JSDoc）
 
 - Pin: `{ x: number, y: number, memo: string }`
-- Line: `{ from: {x:number,y:number}, to: {x:number,y:number} }`
+- Line: `{ from: {x:number,y:number}, to: {x:number,y:number}, angleDeg: number, length: number }`

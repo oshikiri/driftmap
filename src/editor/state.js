@@ -25,7 +25,12 @@ export class EditorState {
       x: from.x + Math.sin(rad) * length,
       y: from.y - Math.cos(rad) * length,
     };
-    this.lines.push({ from: { x: from.x, y: from.y }, to });
+    this.lines.push({
+      from: { x: from.x, y: from.y },
+      to,
+      angleDeg,
+      length,
+    });
     const newPin = { x: to.x, y: to.y, memo: "" };
     this.pins.push(newPin);
   }

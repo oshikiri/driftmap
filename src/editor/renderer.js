@@ -1,10 +1,77 @@
-function drawLine(ctx, line) {
+function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+}
+
+function drawLine(ctx, line, scale) {
+  console.log(line);
   ctx.beginPath();
   ctx.moveTo(line.from.x, line.from.y);
   ctx.lineTo(line.to.x, line.to.y);
   ctx.strokeStyle = "#5c4a1f"; // classic ink
   ctx.lineWidth = 2;
   ctx.stroke();
+
+  // Draw angle and length label near the middle of the line
+  const dx = line.to.x - line.from.x;
+  const dy = line.to.y - line.from.y;
+  const midX = (line.from.x + line.to.x) * 0.5;
+  const midY = (line.from.y + line.to.y) * 0.5;
+
+  // Use stored angle/length if available, otherwise compute
+  const length = Number.isFinite(line.length)
+    ? line.length
+    : Math.hypot(dx, dy);
+  // Angle in degrees, 0 pointing up (negative Y), increasing clockwise
+  const computedRad = Math.atan2(dx, -dy);
+  const computedDeg = (computedRad * 180) / Math.PI;
+  const angleDeg = Number.isFinite(line.angleDeg) ? line.angleDeg : computedDeg;
+
+  const label = `${Math.round(length * 10) / 10} / ${Math.round(angleDeg * 10) / 10}°`;
+
+  // Offset label slightly perpendicular to the line, constant on-screen
+  const perpLen = Math.hypot(-dy, dx) || 1;
+  const nx = (-dy / perpLen) * (8 / scale);
+  const ny = (dx / perpLen) * (8 / scale);
+
+  ctx.save();
+  const fontPx = 14 / scale;
+  ctx.font = `${fontPx}px Georgia, 'Times New Roman', serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const metrics = ctx.measureText(label);
+  const textW =
+    metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight ||
+    metrics.width;
+  const textH =
+    metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent ||
+    fontPx;
+  const pad = 6 / scale;
+  const bx = midX + nx - (textW / 2 + pad);
+  const by = midY + ny - (textH / 2 + pad * 0.6);
+  const bw = textW + pad * 2;
+  const bh = textH + pad * 1.2;
+  // background box
+  ctx.save();
+  roundRect(ctx, bx, by, bw, bh, 6 / scale);
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fill();
+  ctx.lineWidth = 1 / scale;
+  ctx.strokeStyle = "rgba(59,47,27,0.25)";
+  ctx.stroke();
+  ctx.restore();
+  // text
+  ctx.lineWidth = 3 / scale;
+  ctx.strokeStyle = "#fff";
+  ctx.fillStyle = "#3b2f1b";
+  ctx.strokeText(label, midX + nx, midY + ny);
+  ctx.fillText(label, midX + nx, midY + ny);
+  ctx.restore();
 }
 
 function drawPin(ctx, pin, scale) {
@@ -90,6 +157,6 @@ export function drawScene(ctx, transform, lines, pins) {
   ctx.restore();
   ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
 
-  lines.forEach((line) => drawLine(ctx, line));
+  lines.forEach((line) => drawLine(ctx, line, scale));
   pins.forEach((pin) => drawPin(ctx, pin, scale));
 }
