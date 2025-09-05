@@ -133,7 +133,7 @@ function drawLineOverlay(ctx, line, scale, pins) {
       to: { x: placement.baseX, y: placement.baseY },
     };
     const mVis = getLineMetrics(lineVis);
-    // ラベルの数値は元の論理長さ・角度を使用
+    // Use original logical length/angle for label text
     const mOrig = getLineMetrics(line);
     const computedRad = Math.atan2(mOrig.dx, -mOrig.dy);
     const computedDeg = (computedRad * 180) / Math.PI;

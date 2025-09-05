@@ -90,7 +90,7 @@ class DriftmapEditor extends HTMLElement {
     if (this._unbindInteractions) this._unbindInteractions();
   }
 
-  // 画面座標(sx, sy)からピンを追加（ワールド変換付き）
+  // Add a pin from screen coords (with world transform)
   createPinAt(sx, sy) {
     const { x: wx, y: wy } = screenToWorld(sx, sy, this.getTransform());
     const memo = prompt("Enter a memo");
