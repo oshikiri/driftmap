@@ -1,3 +1,8 @@
+const INK = "#5c4a1f"; // classic ink
+const TEXT_DARK = "#3b2f1b";
+const WHITE = "#fff";
+const PIN_RADIUS = 5.5; // pin circle radius (world units)
+
 function roundRect(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -8,52 +13,67 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, rr);
 }
 
-function drawLine(ctx, line, scale) {
-  console.log(line);
-  ctx.beginPath();
-  ctx.moveTo(line.from.x, line.from.y);
-  ctx.lineTo(line.to.x, line.to.y);
-  ctx.strokeStyle = "#5c4a1f"; // classic ink
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Draw angle and length label near the middle of the line
+function getLineMetrics(line) {
   const dx = line.to.x - line.from.x;
   const dy = line.to.y - line.from.y;
+  const segLen = Math.hypot(dx, dy) || 1;
+  const ux = dx / segLen;
+  const uy = dy / segLen;
   const midX = (line.from.x + line.to.x) * 0.5;
   const midY = (line.from.y + line.to.y) * 0.5;
+  const perpLen = Math.hypot(-dy, dx) || 1;
+  const nx = -dy / perpLen;
+  const ny = dx / perpLen;
+  return { dx, dy, segLen, ux, uy, midX, midY, nx, ny };
+}
 
-  // Use stored angle/length if available, otherwise compute
-  const length = Number.isFinite(line.length)
-    ? line.length
-    : Math.hypot(dx, dy);
-  // Angle in degrees, 0 pointing up (negative Y), increasing clockwise
-  const computedRad = Math.atan2(dx, -dy);
+function drawArrowhead(ctx, tipX, tipY, ux, uy, scale, color = INK) {
+  const size = 12 / scale; // arrow length (screen-constant)
+  const width = 8 / scale; // arrow base width
+  const bx = tipX - ux * size; // base center
+  const by = tipY - uy * size;
+  const px = -uy; // perpendicular unit x
+  const py = ux; // perpendicular unit y
+  const lx = bx + px * (width / 2);
+  const ly = by + py * (width / 2);
+  const rx = bx - px * (width / 2);
+  const ry = by - py * (width / 2);
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(lx, ly);
+  ctx.lineTo(rx, ry);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawLineLabel(ctx, line, metrics, scale) {
+  // Prefer stored values; fallback to computed
+  const length = Number.isFinite(line.length) ? line.length : metrics.segLen;
+  const computedRad = Math.atan2(metrics.dx, -metrics.dy);
   const computedDeg = (computedRad * 180) / Math.PI;
   const angleDeg = Number.isFinite(line.angleDeg) ? line.angleDeg : computedDeg;
-
   const label = `${Math.round(length * 10) / 10} / ${Math.round(angleDeg * 10) / 10}°`;
 
-  // Offset label slightly perpendicular to the line, constant on-screen
-  const perpLen = Math.hypot(-dy, dx) || 1;
-  const nx = (-dy / perpLen) * (8 / scale);
-  const ny = (dx / perpLen) * (8 / scale);
+  // Slight offset along normal to avoid overlapping the line
+  const offX = metrics.nx * (8 / scale);
+  const offY = metrics.ny * (8 / scale);
 
   ctx.save();
   const fontPx = 14 / scale;
   ctx.font = `${fontPx}px Georgia, 'Times New Roman', serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const metrics = ctx.measureText(label);
+  const metricsText = ctx.measureText(label);
   const textW =
-    metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight ||
-    metrics.width;
+    metricsText.actualBoundingBoxLeft + metricsText.actualBoundingBoxRight ||
+    metricsText.width;
   const textH =
-    metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent ||
-    fontPx;
+    metricsText.actualBoundingBoxAscent +
+      metricsText.actualBoundingBoxDescent || fontPx;
   const pad = 6 / scale;
-  const bx = midX + nx - (textW / 2 + pad);
-  const by = midY + ny - (textH / 2 + pad * 0.6);
+  const bx = metrics.midX + offX - (textW / 2 + pad);
+  const by = metrics.midY + offY - (textH / 2 + pad * 0.6);
   const bw = textW + pad * 2;
   const bh = textH + pad * 1.2;
   // background box
@@ -67,15 +87,85 @@ function drawLine(ctx, line, scale) {
   ctx.restore();
   // text
   ctx.lineWidth = 3 / scale;
-  ctx.strokeStyle = "#fff";
-  ctx.fillStyle = "#3b2f1b";
-  ctx.strokeText(label, midX + nx, midY + ny);
-  ctx.fillText(label, midX + nx, midY + ny);
+  ctx.strokeStyle = WHITE;
+  ctx.fillStyle = TEXT_DARK;
+  ctx.strokeText(label, metrics.midX + offX, metrics.midY + offY);
+  ctx.fillText(label, metrics.midX + offX, metrics.midY + offY);
   ctx.restore();
 }
 
+function drawLineSegment(ctx, from, to, scale, color = INK, width = 2) {
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width / scale;
+  ctx.stroke();
+}
+
+function computeArrowPlacement(line, scale, pins) {
+  const m = getLineMetrics(line);
+  const eps = 0.5; // tolerance to consider line.to on a pin center
+  let onPin = null;
+  for (const p of pins) {
+    const d = Math.hypot(p.x - line.to.x, p.y - line.to.y);
+    if (d <= eps) {
+      onPin = p;
+      break;
+    }
+  }
+  if (!onPin) return null;
+  const margin = 2 / scale; // keep arrow tip slightly off the pin edge
+  const tipBack = PIN_RADIUS + margin; // from pin center towards the line
+  const tipX = line.to.x - m.ux * tipBack;
+  const tipY = line.to.y - m.uy * tipBack;
+  const arrowSize = 12 / scale; // must match drawArrowhead
+  const baseX = tipX - m.ux * arrowSize;
+  const baseY = tipY - m.uy * arrowSize;
+  return { tipX, tipY, baseX, baseY, ux: m.ux, uy: m.uy };
+}
+
+function drawLineOverlay(ctx, line, scale, pins) {
+  const placement = computeArrowPlacement(line, scale, pins);
+  if (placement) {
+    const lineVis = {
+      from: line.from,
+      to: { x: placement.baseX, y: placement.baseY },
+    };
+    const mVis = getLineMetrics(lineVis);
+    // ラベルの数値は元の論理長さ・角度を使用
+    const mOrig = getLineMetrics(line);
+    const computedRad = Math.atan2(mOrig.dx, -mOrig.dy);
+    const computedDeg = (computedRad * 180) / Math.PI;
+    const length = Number.isFinite(line.length) ? line.length : mOrig.segLen;
+    const angleDeg = Number.isFinite(line.angleDeg)
+      ? line.angleDeg
+      : computedDeg;
+    const lineForLabel = {
+      from: lineVis.from,
+      to: lineVis.to,
+      length,
+      angleDeg,
+    };
+    drawArrowhead(
+      ctx,
+      placement.tipX,
+      placement.tipY,
+      placement.ux,
+      placement.uy,
+      scale,
+      INK,
+    );
+    drawLineLabel(ctx, lineForLabel, mVis, scale);
+  } else {
+    const m = getLineMetrics(line);
+    drawArrowhead(ctx, line.to.x, line.to.y, m.ux, m.uy, scale, INK);
+    drawLineLabel(ctx, line, m, scale);
+  }
+}
+
 function drawPin(ctx, pin, scale) {
-  const r = 5.5;
+  const r = PIN_RADIUS;
   ctx.beginPath();
   ctx.fillStyle = "#b01717"; // classic red
   ctx.strokeStyle = "#2b1d0a"; // dark ink
@@ -157,6 +247,13 @@ export function drawScene(ctx, transform, lines, pins) {
   ctx.restore();
   ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
 
-  lines.forEach((line) => drawLine(ctx, line, scale));
+  lines.forEach((line) => {
+    const placement = computeArrowPlacement(line, scale, pins);
+    const toPoint = placement
+      ? { x: placement.baseX, y: placement.baseY }
+      : line.to;
+    drawLineSegment(ctx, line.from, toPoint, scale, INK, 2);
+  });
   pins.forEach((pin) => drawPin(ctx, pin, scale));
+  lines.forEach((line) => drawLineOverlay(ctx, line, scale, pins));
 }
