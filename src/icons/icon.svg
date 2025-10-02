@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f6ecd4" />
+      <stop offset="1" stop-color="#e3d1a1" />
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0v32" fill="none" stroke="#cbb98a" stroke-width="3" stroke-linecap="round" />
+    </pattern>
+    <linearGradient id="route" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#7a0f0f" />
+      <stop offset="1" stop-color="#b23b3b" />
+    </linearGradient>
+    <linearGradient id="compass-fill" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#1e4a7e" />
+      <stop offset="1" stop-color="#3490dc" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+  <rect width="512" height="512" rx="96" fill="url(#grid)" opacity="0.38" />
+  <path
+    d="M128 356c22-32 46-45 72-40 24 4 40 30 64 34 28 4 52-18 76-50 15-20 38-32 56-20 21 14 20 48-4 84-32 48-88 80-152 80-43 0-82-21-108-56"
+    fill="none"
+    stroke="url(#route)"
+    stroke-width="32"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <g fill="#fdf5df" stroke="#7a0f0f" stroke-width="12">
+    <circle cx="132" cy="360" r="20" />
+    <circle cx="354" cy="274" r="18" />
+  </g>
+  <g transform="translate(340 84)">
+    <circle cx="80" cy="80" r="70" fill="#fefbf0" stroke="#1e4a7e" stroke-width="12" />
+    <circle cx="80" cy="80" r="46" fill="url(#compass-fill)" opacity="0.85" />
+    <path
+      d="M80 32 62 98l38-18 38 18z"
+      fill="#fefbf0"
+      stroke="#0d2642"
+      stroke-width="8"
+      stroke-linejoin="round"
+    />
+    <path d="M80 46v68" stroke="#7a0f0f" stroke-width="10" stroke-linecap="round" />
+    <circle cx="80" cy="80" r="8" fill="#fefbf0" />
+  </g>
+  <g fill="#7d6844" opacity="0.65">
+    <path d="M188 220c-16 8-28 30-20 44s34 12 50 4 28-30 20-44-34-12-50-4z" />
+    <path d="M224 264c-14 7-24 26-16 38s30 10 44 3 24-26 16-38-30-10-44-3z" />
+  </g>
+</svg>

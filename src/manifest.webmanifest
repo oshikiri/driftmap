@@ -1,0 +1,20 @@
+{
+  "name": "DriftMap",
+  "short_name": "DriftMap",
+  "description": "Turn steps and heading into personal drifting maps without GPS.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#20639B",
+  "theme_color": "#20639B",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
